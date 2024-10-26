@@ -1,0 +1,7 @@
+title: PDF Footnotes Processor
+description: Extract and process footnotes from PDF documents
+theme: jekyll-theme-cayman
+show_downloads: true
+github:
+  is_project_page: true
+  repository_url: https://github.com/laxman824/PDF-Footnotes-processed
