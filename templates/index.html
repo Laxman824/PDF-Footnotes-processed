@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Footnote Processor</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-800 mb-4">PDF Footnote Processor</h1>
+            <p class="text-xl text-gray-600">Extract and process footnotes from PDF documents</p>
+        </header>
+
+        <div class="max-w-xl mx-auto bg-white rounded-lg shadow-lg p-8">
+            <form id="uploadForm" class="space-y-6">
+                <div class="space-y-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="pdfFile">
+                        Upload PDF File
+                    </label>
+                    <input 
+                        type="file" 
+                        id="pdfFile" 
+                        name="file" 
+                        accept=".pdf"
+                        class="w-full p-2 border border-gray-300 rounded focus:outline-none focus:border-blue-500"
+                        required
+                    >
+                </div>
+
+                <div id="fileInfo" class="hidden space-y-2 text-sm text-gray-600"></div>
+
+                <button 
+                    type="submit"
+                    class="w-full bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
+                >
+                    Process PDF
+                </button>
+            </form>
+
+            <div id="processingStatus" class="mt-4 text-center hidden">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                <p class="mt-2 text-gray-600">Processing your PDF...</p>
+            </div>
+
+            <div id="errorMessage" class="mt-4 text-red-500 text-center hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const fileInput = document.getElementById('pdfFile');
+        const fileInfo = document.getElementById('fileInfo');
+        const processingStatus = document.getElementById('processingStatus');
+        const errorMessage = document.getElementById('errorMessage');
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                fileInfo.innerHTML = `
+                    <p>File name: ${file.name}</p>
+                    <p>Size: ${(file.size / 1024).toFixed(2)} KB</p>
+                `;
+                fileInfo.classList.remove('hidden');
+                errorMessage.classList.add('hidden');
+            }
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                errorMessage.textContent = 'Please select a PDF file';
+                errorMessage.classList.remove('hidden');
+                return;
+            }
+
+            formData.append('file', file);
+            
+            try {
+                processingStatus.classList.remove('hidden');
+                errorMessage.classList.add('hidden');
+                
+                const response = await axios.post('/process', formData, {
+                    responseType: 'blob'
+                });
+                
+                // Create download link
+                const url = window.URL.createObjectURL(new Blob([response.data]));
+                const link = document.createElement('a');
+                link.href = url;
+                link.setAttribute('download', `${file.name.replace('.pdf', '')}_processed.xlsx`);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                
+            } catch (error) {
+                let errorMsg = 'An error occurred while processing the PDF';
+                if (error.response) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        try {
+                            const errorData = JSON.parse(reader.result);
+                            errorMsg = errorData.error || errorMsg;
+                        } catch (e) {
+                            console.error('Error parsing error response:', e);
+                        }
+                        errorMessage.textContent = errorMsg;
+                        errorMessage.classList.remove('hidden');
+                    };
+                    reader.readAsText(error.response.data);
+                } else {
+                    errorMessage.textContent = errorMsg;
+                    errorMessage.classList.remove('hidden');
+                }
+            } finally {
+                processingStatus.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
